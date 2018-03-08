@@ -1,0 +1,14 @@
+---
+- name: Terminate Cache Application Stack
+  hosts: localhost
+
+  connection: local
+
+  vars:
+    - role: 'cache'
+
+  vars_files:
+    - ./vars/common.yml
+
+  roles:
+    - cache-terminate

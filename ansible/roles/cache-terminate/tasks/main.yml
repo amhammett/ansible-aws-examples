@@ -1,0 +1,45 @@
+---
+- name: lookup cache instance
+  shell: >
+    aws elasticache
+    describe-replication-groups
+    --replication-group-id {{platform}}-{{env}}-{{role}}
+  register: shell_elasticache_instances
+  changed_when: false
+  failed_when:
+    - (shell_elasticache_instances.rc != '0')
+    - ('ReplicationGroupNotFoundFault' not in shell_elasticache_instances.stderr)
+
+- name: cache instance
+  shell: >
+    aws elasticache
+    delete-replication-group
+    --replication-group-id '{{platform}}-{{env}}-{{role}}'
+  when:
+    - shell_elasticache_instances|success
+    - ('ReplicationGroupNotFoundFault' not in shell_elasticache_instances.stderr)
+
+- name: wait for instance to deleted
+  shell: >
+    aws elasticache
+    describe-replication-groups
+    --replication-group-id '{{platform}}-{{env}}-{{role}}'
+  register: shell_elasticache_status
+  until: ('ReplicationGroupNotFoundFault' in shell_elasticache_status.stderr)
+  retries: 6
+  delay: 30
+  changed_when: false
+  failed_when:
+    - (shell_elasticache_status.rc != '0')
+    - ('ReplicationGroupNotFoundFault' not in shell_elasticache_status.stderr)
+
+- name: terminate subnet group
+  elasticache_subnet_group:
+    name: "{{platform}}-{{env}}-{{role}}-sng"
+    state: absent
+
+- name: cache security group
+  ec2_group:
+    name:        "{{platform}}-{{env}}-{{role}}-sg"
+    description: "{{platform}} {{role}} access for {{env}}"
+    state: absent
