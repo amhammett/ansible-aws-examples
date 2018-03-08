@@ -1,0 +1,12 @@
+---
+- name: lookup vpc
+  ec2_vpc_net_facts:
+    filters:
+      "tag:Environment": "{{dyn_vpc_lookup}}"
+  register: ec2_vpc_facts
+
+- name: lookup subnets
+  ec2_vpc_subnet_facts:
+    filters:
+      vpc-id: "{{ec2_vpc_facts.vpcs[0].id}}"
+  register: ec2_subnet_facts

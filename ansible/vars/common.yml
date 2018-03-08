@@ -1,0 +1,47 @@
+---
+
+platform: example
+
+vpc_lookup:
+  default: dev
+
+dyn_vpc_lookup: "{{vpc_lookup['env']|default(vpc_lookup['default'])}}"
+
+services:
+  was:
+    disk_size:
+      default: 10
+    lb_port: 80
+    lb_health_check: "/health/check.html"
+    port_exposed:
+      default: 8080
+    port_protocol: tcp
+    root: "/opt/web-app"
+  cache:
+    port_exposed:
+      default: '6379'
+    port_protocol: tcp
+    node_type:
+      default: cache.t2.micro
+    node_count:
+      default: 9
+    node_replicas:
+      default: 9
+    auth_token:
+      default: 'QGw9LM3samdJbvJ3jW43A6ZRMUj7ZdtWkCyTgf7sPsFHhSFVgZ'
+
+dyn_role_disk_size:       "{{services[role]['disk_size'][env]|default(services[role]['disk_size']['default'])}}"
+dyn_role_lb_health_check: "{{services[role]['lb_health_check']}}"
+dyn_role_lb_port:         "{{services[role]['lb_port']}}"
+dyn_role_port_exposed:    "{{services[role]['port_exposed'][env]|default(services[role]['port_exposed']['default'])}}"
+dyn_role_port_protocol:   "{{services[role]['port_protocol']}}"
+dyn_role_root:            "{{services[role]['root']}}"
+dyn_role_user:            "{{ansible_user}}"
+dyn_role_group:           "{{ansible_user}}"
+dyn_app_dir:              "{{dyn_role_root}}/app"
+
+# cache
+dyn_node_type:       "{{services[role]['node_type'][env]|default(services[role]['node_type']['default'])}}"
+dyn_node_count:      "{{services[role]['node_count'][env]|default(services[role]['node_count']['default'])}}"
+dyn_node_replicas:   "{{services[role]['node_replicas'][env]|default(services[role]['node_replicas']['default'])}}"
+dyn_cache_auth_token: "{{services[role]['auth_token'][env]|default(services[role]['auth_token']['default'])}}"

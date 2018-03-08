@@ -7,7 +7,7 @@
   register: shell_elasticache_instances
   changed_when: false
   failed_when:
-    - (shell_elasticache_instances.rc != '0')
+    - shell_elasticache_instances.rc != 0
     - ('ReplicationGroupNotFoundFault' not in shell_elasticache_instances.stderr)
 
 - name: cache instance
@@ -26,7 +26,7 @@
     --replication-group-id '{{platform}}-{{env}}-{{role}}'
   register: shell_elasticache_status
   until: ('ReplicationGroupNotFoundFault' in shell_elasticache_status.stderr)
-  retries: 6
+  retries: 20
   delay: 30
   changed_when: false
   failed_when:

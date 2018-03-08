@@ -2,7 +2,7 @@ all:
   vars:
     ansible_user: ubuntu
   children:
-    tag_platform_example:
+    tag_Platform_example:
       vars:
         ansible_ssh_private_key_file: ~/.ssh/id_rsa-{{platform}}-{{env}}
     localhost:

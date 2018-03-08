@@ -1,0 +1,53 @@
+---
+- name: default security group rules
+  set_fact:
+    security_group_rules: []
+
+- name: add rules for app ports
+  set_fact:
+    security_group_rules: >
+      {{security_group_rules}} + [
+        {
+          'proto':     '{{dyn_role_port_protocol}}',
+          'from_port': '{{dyn_role_port_exposed}}',
+          'to_port':   '{{dyn_role_port_exposed}}',
+          'cidr_ip':   '{{item|ipsubnet(16)}}'
+        }
+      ]
+  with_items: "{{ansible_all_ipv4_addresses}}"
+
+- name: cache security group
+  ec2_group:
+    name:        "{{platform}}-{{env}}-{{role}}-sg"
+    description: "{{platform}} {{role}} access for {{env}}"
+    vpc_id:      "{{ec2_vpc_facts.vpcs[0].id}}"
+    rules:       "{{security_group_rules}}"
+  register: ec2_group
+
+- elasticache_subnet_group:
+    state: present
+    name: "{{platform}}-{{env}}-{{role}}-sng"
+    description: "{{platform}} {{role}} subnet for {{env}}"
+    subnets: "{{ec2_subnet_facts|json_query('subnets[*].id')}}"
+
+# elasticache module does not support multi-az
+- name: cache instance
+  shell: >
+    aws elasticache
+    create-replication-group
+    --replication-group-id '{{platform}}-{{env}}-{{role}}'
+    --replication-group-description '{{platform}} {{role}} for {{env}}'
+    --num-cache-clusters '{{dyn_node_count}}'
+    --cache-node-type '{{dyn_node_type}}'
+    --engine 'redis'
+    --engine-version '3.2.6'
+    --cache-parameter-group-name 'default.redis3.2.cluster.on'
+    --cache-subnet-group-name '{{platform}}-{{env}}-{{role}}-sng'
+    --security-group-ids '{{ec2_group.group_id}}'
+    --tags 'Key=Environment,Value={{env}}'
+    --port '{{dyn_role_port_exposed}}'
+    --auto-minor-version-upgrade
+    --auth-token '{{dyn_cache_auth_token}}'
+    --transit-encryption-enabled
+    --automatic-failover-enabled
+
