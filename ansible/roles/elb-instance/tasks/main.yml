@@ -1,0 +1,50 @@
+---
+- name: default security group rules
+  set_fact:
+    security_group_rules: []
+
+- name: add rules for app ports
+  set_fact:
+    security_group_rules: "{{security_group_rules}} + [ { 'proto': '{{dyn_role_port_protocol}}', 'from_port': '{{dyn_role_port_exposed}}', 'to_port': '{{dyn_role_port_exposed}}', 'cidr_ip': '{{item|ipsubnet(16)}}' } ]"
+  with_items: "{{ansible_all_ipv4_addresses}}"
+
+- name: add rules for ssh
+  set_fact:
+    security_group_rules: "{{security_group_rules}} + [ { 'proto': 'tcp', 'from_port': '22', 'to_port': '22', 'cidr_ip': '{{item|ipsubnet(16)}}' } ]"
+  with_items: "{{ansible_all_ipv4_addresses}}"
+
+- name: security group
+  ec2_group:
+    name:        "{{platform}}-{{env}}-{{role}}-lb-sg"
+    description: "{{platform}} {{role}} access for {{env}} load balancer"
+    vpc_id:      "{{ec2_vpc_facts.vpcs[0].id}}"
+    rules:       "{{security_group_rules}}"
+
+- name: define service load balancer
+  debug: msg="name={{platform}}-{{env}}-{{role}}-lb instance_port={{dyn_role_port_exposed}} lb_port={{dyn_role_lb_port}}"
+
+- name: service load balancer
+  ec2_elb_lb:
+    name:                    "{{platform}}-{{env}}-{{role}}-lb"
+    scheme:                  internal
+    cross_az_load_balancing: true
+    security_group_names:    "{{platform}}-{{env}}-{{role}}-lb-sg"
+    state:                   present
+    purge_instance_ids:      false
+    subnets:                 "{{ec2_subnet_facts|json_query('subnets[*].id')}}"
+    listeners:
+      - protocol:           http
+        load_balancer_port: "{{dyn_role_lb_port}}"
+        instance_port:      "{{dyn_role_port_exposed}}"
+    health_check:
+      ping_protocol:       http
+      ping_port:           "{{dyn_role_port_exposed}}"
+      ping_path:           "{{dyn_role_lb_health_check}}"
+      response_timeout:    3
+      interval:            5
+      unhealthy_threshold: 2
+      healthy_threshold:   5
+  register: ec2_elb_lb
+
+- name: elb instance created
+  debug: msg="endpoint={{ec2_elb_lb.elb.dns_name}}"

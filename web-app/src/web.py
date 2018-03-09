@@ -2,7 +2,7 @@ import os
 import SimpleHTTPServer
 import SocketServer
 
-WEB_PORT = os.getenv('WEB_PORT', 8000)
+WEB_PORT = os.getenv('WEB_PORT', 8080)
 WEB_PATH = os.path.join(os.getcwd(), 'static')
 
 

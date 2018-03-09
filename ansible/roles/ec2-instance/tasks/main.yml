@@ -1,0 +1,91 @@
+---
+- name: default security group rules
+  set_fact:
+    security_group_rules: []
+
+- name: add rules for app ports
+  set_fact:
+    security_group_rules: >
+      {{security_group_rules}} + [
+        {
+          'proto':     '{{dyn_role_port_protocol}}',
+          'from_port': '{{dyn_role_port_exposed}}',
+          'to_port':   '{{dyn_role_port_exposed}}',
+          'cidr_ip':   '{{item|ipsubnet(16)}}'
+        }
+      ]
+  with_items: "{{ansible_all_ipv4_addresses}}"
+
+- name: add rules for ssh
+  set_fact:
+    security_group_rules: >
+     {{security_group_rules}} + [
+       {
+         'proto':     'tcp',
+         'from_port': '22',
+         'to_port':   '22',
+         'cidr_ip':   '{{item|ipsubnet(16)}}'
+       }
+     ]
+  with_items: "{{ansible_all_ipv4_addresses}}"
+
+- name: security group
+  ec2_group:
+    name:        "{{platform}}-{{env}}-{{role}}-sg"
+    description: "{{platform}} {{role}} access for {{env}}"
+    vpc_id:      "{{ec2_vpc_facts.vpcs[0].id}}"
+    rules:       "{{security_group_rules}}"
+
+- name: lookup ec2 instance
+  ec2_remote_facts:
+    filters:
+      instance-state-name: running
+      "tag:Environment":   "{{env}}"
+      "tag:Platform":      "{{platform}}"
+      "tag:Role":          "{{role}}"
+  register: ec2_facts
+
+- name: ec2 instance ... please wait
+  ec2:
+    key_name:         "{{platform}}-{{env}}"
+    group:            "{{platform}}-{{env}}-{{role}}-sg"
+    instance_type:    t2.nano
+    image:            "{{ami_find.results[0].ami_id}}"
+    wait:             yes
+    instance_tags:
+       Environment: "{{env}}"
+       Platform:    "{{platform}}"
+       Role:        "{{role}}"
+       Name:        "{{platform}}-{{env}}-{{role}}"
+    volumes:
+      - device_name:           /dev/sda1
+        volume_size:           "{{dyn_role_disk_size}}"
+        delete_on_termination: true
+    vpc_subnet_id:    "{{ec2_subnet_facts|json_query('subnets[*].id')|random}}"
+    assign_public_ip: no
+  register: ec2_instance
+  when: ec2_facts.instances|length < 1
+
+- name: wait for host to be available
+  wait_for:
+    host:    "{{ec2_instance.instances[0].private_ip}}"
+    port:    22
+    timeout: 60
+  when: ec2_instance|changed
+
+- name: register with lb
+  ec2_elb:
+    ec2_elbs:    "{{platform}}-{{env}}-{{role}}-lb"
+    instance_id: "{{ec2_instance.instances[0].id}}"
+    wait:        false
+    state: present
+  when:
+    - elb_register
+    - ec2_instance|changed
+
+- name: clear cache
+  shell: "AWS_PROFILE={{lookup('env','AWS_PROFILE')}} ./inventory/ec2.py --refresh-cache"
+  when: ec2_instance|changed
+
+- name: refresh meta
+  meta: refresh_inventory
