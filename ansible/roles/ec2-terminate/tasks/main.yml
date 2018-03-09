@@ -1,0 +1,33 @@
+---
+- name: lookup ec2 instances
+  ec2_instance_facts:
+    filters:
+      instance-state-name: running
+      "tag:Platform":      "{{platform}}"
+      "tag:Environment":   "{{env}}"
+      "tag:Role":          "{{role}}"
+  register: ec2_instance_facts
+
+- name: terminating the following instances
+  debug: msg="{{ec2_instance_facts|json_query('instances[*].instance_id')|join(' ')}}"
+  when: ec2_instance_facts.instances|length
+
+- name: terminate ec2 instances
+  ec2:
+    instance_ids: "{{ec2_instance_facts|json_query('instances[*].instance_id')}}"
+    state:       absent
+    wait:        true
+  when: ec2_instance_facts.instances|length
+
+- name: lookup ec2 groups
+  ec2_group_facts:
+    filters:
+      group-name: "{{platform}}-{{env}}-{{role}}-sg"
+  register: ec2_group_facts
+
+- name: terminate ec2 security groups
+  ec2_group:
+    state:       absent
+    group_id: "{{item.group_id}}"
+  when: ec2_group_facts.security_groups|length
+  with_items: "{{ec2_group_facts.security_groups}}"

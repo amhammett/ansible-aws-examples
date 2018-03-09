@@ -1,0 +1,14 @@
+---
+- name: service load balancer
+  ec2_elb_lb:
+    name:  "{{platform}}-{{env}}-{{role}}-lb"
+    state: absent
+    wait:  true
+  register: ec2_elb_lb
+
+- name: security group
+  ec2_group:
+    name:        "{{platform}}-{{env}}-{{role}}-lb-sg"
+    description: "{{platform}} {{role}} access for {{env}} load balancer"
+    state:       absent
+

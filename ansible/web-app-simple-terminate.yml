@@ -1,0 +1,15 @@
+---
+- name: Terminate Simple Web Application Stack
+  hosts: localhost
+
+  connection: local
+
+  vars:
+    - role: was
+
+  vars_files:
+    - ./vars/common.yml
+
+  roles:
+    - ec2-terminate
+    - elb-terminate
