@@ -16,7 +16,8 @@ services:
     port_exposed:
       default: 8080
     port_protocol: tcp
-    root: "/opt/web-app"
+    root:         "/opt/web-app"
+    service_name: "web-app"
   cache:
     port_exposed:
       default: '6379'
@@ -39,6 +40,7 @@ dyn_role_root:            "{{services[role]['root']}}"
 dyn_role_user:            "{{ansible_user}}"
 dyn_role_group:           "{{ansible_user}}"
 dyn_app_dir:              "{{dyn_role_root}}/app"
+dyn_service_name:         "{{services[role]['service_name']}}"
 
 # cache
 dyn_node_type:       "{{services[role]['node_type'][env]|default(services[role]['node_type']['default'])}}"
