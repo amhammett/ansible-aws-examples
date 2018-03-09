@@ -1,0 +1,52 @@
+---
+- name: install requirements
+  apt:
+    name: "{{item}}"
+  become: yes
+  with_items:
+    - virtualenv
+    - make
+
+- name: folder structure
+  file:
+    path:  "{{item.p}}"
+    owner: "{{dyn_role_user}}"
+    group: "{{dyn_role_group}}"
+    mode:  0775
+    state: "{{item.s}}"
+  become: yes
+  with_items:
+    - { p: '{{dyn_role_root}}',         s: directory }
+    - { p: '{{dyn_role_root}}/app',     s: directory }
+    - { p: '{{dyn_role_root}}/logs',    s: directory }
+    - { p: '{{dyn_role_root}}/envdir',  s: directory }
+
+- name: deploy code
+  synchronize:
+    src:  "{{playbook_dir}}/../web-app/"
+    dest: "{{dyn_role_root}}/app"
+    delete: yes
+    rsync_opts:
+      - "--exclude=venv"
+
+- name: install pips
+  pip:
+    requirements: "{{dyn_role_root}}/app/requirements.txt"
+    virtualenv:   "{{dyn_role_root}}/app/venv"
+
+- name: deploy service
+  template:
+    src:  "web-app.service.j2"
+    dest: "/etc/systemd/system/web-app.service"
+  become: yes
+
+- name: start app
+  service:
+    name: "{{dyn_service_name}}"
+    state: started
+    enabled: true
+  become: yes
+
+- name: validate service
+  uri:
+    url: "http://127.0.0.1:{{dyn_role_port_exposed}}/health/check.html"
