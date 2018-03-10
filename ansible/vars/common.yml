@@ -8,7 +8,7 @@ vpc_lookup:
 dyn_vpc_lookup: "{{vpc_lookup['env']|default(vpc_lookup['default'])}}"
 
 services:
-  was:
+  web:
     disk_size:
       default: 10
     lb_port: 80
