@@ -16,6 +16,27 @@
       ]
   with_items: "{{ansible_all_ipv4_addresses}}"
 
+- name: lookup load balancer security group
+  ec2_group_facts:
+    filters:
+      vpc-id:     "{{ec2_vpc_facts.vpcs[0].id}}"
+      group-name: "{{platform}}-{{env}}-{{role}}-lb-sg"
+  register: elb_group_facts
+
+- name: add rules for load balancer
+  set_fact:
+    security_group_rules: >
+      {{security_group_rules}} + [
+        {
+          'proto':     '{{dyn_role_port_protocol}}',
+          'from_port': '{{dyn_role_port_exposed}}',
+          'to_port':   '{{dyn_role_port_exposed}}',
+          'group_id':  '{{elb_group_facts.security_groups[0].group_id}}'
+        }
+      ]
+  when: ec2_elb_lb is defined
+
+
 - name: add rules for ssh
   set_fact:
     security_group_rules: >
@@ -80,11 +101,15 @@
     wait:        false
     state: present
   when:
-    - elb_register
+    - elb_register|default('false')
     - ec2_instance|changed
 
 - name: clear cache
   shell: "AWS_PROFILE={{lookup('env','AWS_PROFILE')}} ./inventory/ec2.py --refresh-cache"
+  register: shell_refresh_cache
+  until: "ec2_instance.instances[0].private_ip in (shell_refresh_cache['stdout']|from_json)['ec2']"
+  retries: 6
+  delay: 30
   when: ec2_instance|changed
 
 - name: refresh meta
