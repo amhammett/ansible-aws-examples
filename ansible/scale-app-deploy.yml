@@ -1,11 +1,11 @@
 ---
-- name: Simple Web Application Stack
+- name: High Availability Web Application Stack
   hosts: localhost
 
   connection: local
 
   vars:
-    - role: 'was' # web app simple
+    - role: 'scale'
 
   vars_files:
     - ./vars/common.yml
@@ -14,16 +14,15 @@
     - meta-vpc
     - meta-ami
     - ec2-key
-    - elb-instance
-    - { role: 'ec2-instance', elb_register: true }
+    - ec2-instance
 
 - name: Configure Stack
-  hosts: "tag_Platform_{{platform}}:&tag_Role_was:&tag_Environment_{{env}}"
+  hosts: "tag_Platform_{{platform}}:&tag_Role_sale:&tag_Environment_{{env}}"
 
   gather_facts: false
 
   vars:
-    - role: 'was'
+    - role: 'scale'
 
   vars_files:
     - ./vars/common.yml
@@ -42,4 +41,20 @@
       setup:
 
   roles:
-    - web-app-deploy
+    - scale-deploy
+
+- name: Scale
+  hosts: localhost
+
+  connection: local
+
+  vars:
+    - role: 'scale'
+
+  vars_files:
+    - ./vars/common.yml
+
+  roles:
+    - ec2-gold-bake
+    - ec2-gold-destroy
+    - scale-asg

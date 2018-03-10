@@ -1,0 +1,45 @@
+---
+- name: Simple Web Application Stack
+  hosts: localhost
+
+  connection: local
+
+  vars:
+    - role: 'web' # web app simple
+
+  vars_files:
+    - ./vars/common.yml
+
+  roles:
+    - meta-vpc
+    - meta-ami
+    - ec2-key
+    - elb-instance
+    - { role: 'ec2-instance', elb_register: true }
+
+- name: Configure Stack
+  hosts: "tag_Platform_{{platform}}:&tag_Role_web:&tag_Environment_{{env}}"
+
+  gather_facts: false
+
+  vars:
+    - role: 'web'
+
+  vars_files:
+    - ./vars/common.yml
+
+  pre_tasks:
+    - name: python2.7 status
+      raw: /usr/bin/python --version
+      changed_when: false
+      ignore_errors: true
+      register: raw_python
+    - name: install python 2.7
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      become: yes
+      when: raw_python|failed
+    - name: gather facts
+      setup:
+
+  roles:
+    - web-app-deploy

@@ -5,7 +5,7 @@
   connection: local
 
   vars:
-    - role: was
+    - role: web
 
   vars_files:
     - ./vars/common.yml

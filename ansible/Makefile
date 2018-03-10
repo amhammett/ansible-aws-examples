@@ -34,18 +34,18 @@ db-app-terminate:
 	$(venv_ansible_path) db-app-terminate.yml $(playbook_vars)
 
 # web app - high availability
-web-app-ha-deploy:
-	$(venv_ansible_path) web-app-ha-deploy.yml $(playbook_vars)
+scale-app-deploy:
+	$(venv_ansible_path) scale-app-deploy.yml $(playbook_vars)
 
-web-app-ha-terminate:
-	$(venv_ansible_path) web-app-ha-terminate.yml $(playbook_vars)
+scale-app-terminate:
+	$(venv_ansible_path) scale-app-terminate.yml $(playbook_vars)
 
 # web app - simple
-web-app-simple-deploy:
-	$(venv_ansible_path) web-app-simple-deploy.yml $(playbook_vars)
+web-app-deploy:
+	$(venv_ansible_path) web-app-deploy.yml $(playbook_vars)
 
-web-app-simple-terminate:
-	$(venv_ansible_path) web-app-simple-terminate.yml $(playbook_vars)
+web-app-terminate:
+	$(venv_ansible_path) web-app-terminate.yml $(playbook_vars)
 
 # test
 test: ## test all the things
